@@ -1,0 +1,10 @@
+# Ignore Python binaries
+**/*.pyc
+
+# Ignore R artefacts
+**/*.Rout
+**/*.RData
+**/*.rds
+
+# Ignore data/
+data/*
