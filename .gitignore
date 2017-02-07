@@ -8,3 +8,6 @@
 
 # Ignore data/
 data/*
+
+# Ignore swap files
+**/*.swp
