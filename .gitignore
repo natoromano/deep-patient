@@ -6,8 +6,13 @@
 **/*.RData
 **/*.rds
 
-# Ignore data/
+# Ignore data/ and models
 data/*
+models/*
+
+# Ignore nfs artefact
+**/.nfs00*
 
 # Ignore swap files
 **/*.swp
+

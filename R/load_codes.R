@@ -80,12 +80,12 @@ codes.2014 <- filter(codes.2014, patient_id %in% ids, !is.null(code))
 by_code <- group_by(codes, code)
 counts <- as.data.frame(summarize(by_code, count=n()))
 codes.to.keep <- filter(counts, count >= 5, 
-                        count < 0.8 * length(unique(codes$patient_id)))
+                        count < 0.8 * length(unique(codes$patient_id)))$code
 
 by_patient <- group_by(orders, rxcui)
 counts <- as.data.frame(summarize(by_code, count=n()))
 orders.to.keep <- filter(counts, count >= 5, 
-                         count < 0.8 * length(unique(orders$patient_id)))
+                         count < 0.8 * length(unique(orders$patient_id)))$rxcui
 
 
 # Sample test patients, and hold them back from training set
@@ -95,13 +95,13 @@ codes = filter(codes, patient_id %in% ids, !is.null(code),
                code %in% codes.to.keep,
                !(patient_id %in% test.patients))
 orders = filter(orders, patient_id %in% ids,!is.null(rxcui),
-                order %in% orders.to.keep,
+                rxcui %in% orders.to.keep,
                 !(patient_id %in% test.patients))
 demo = filter(demo, patient_id %in% ids, 
               !(patient_id %in% test.patients))
 
 # Choose training patients for downstream task
-train.patients = base::sample(codes$patient_id, size=200000)
+train.patients = base::sample(unique(codes$patient_id), size=200000)
 train.demo = filter(demo, patient_id %in% train.patients)
 train.codes = filter(codes, patient_id %in% train.patients)
 train.orders = filter(orders, patient_id %in% train.patients)
@@ -152,8 +152,8 @@ write.table(test.targets,
           row.names=F)
 
 # Metadata
-write(all.codes, file='data/codes.txt', sep='\n')
-write(all.orders, file='data/orders.txt', sep=', ')
-write(ids, file='data/patients.txt', sep='\n')
-write(train.patients, file='data/train.patients.txt', sep='\n')
-write(test.patients, file='data/test.patients.txt', sep='\n')
+write(all.codes, file='../data/codes.txt', sep='\n')
+write(all.orders, file='../data/orders.txt', sep=', ')
+write(ids, file='../data/patients.txt', sep='\n')
+write(train.patients, file='../data/train.patients.txt', sep='\n')
+write(test.patients, file='../data/test.patients.txt', sep='\n')

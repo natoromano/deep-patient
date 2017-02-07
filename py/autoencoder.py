@@ -63,6 +63,7 @@ class StackedEncoders(object):
         in_dim, self.hidden_units)
 
     self._add_encode_ops()
+    self.saver = tf.train.Saver()
 
     self.sess.run(tf.global_variables_initializer())
 
@@ -98,7 +99,7 @@ class StackedEncoders(object):
           print "Step %d for encoder %d:" % (i + 1, encoder_id), loss
 
 
-  def encode(self, data, num_encoders=):
+  def encode(self, data, num_encoders=2):
     """
     Uses the trained encoder to encode some data.
 
@@ -128,17 +129,14 @@ class StackedEncoders(object):
     """
     Saves model.
     """
-    # TODO
-    pass
+    self.saver.save(self.sess, path)
 
 
-  @classmethod
-  def load(cls, path):
+  def load(self, path):
     """
     Loads a model.
     """
-    # TODO
-    pass
+    self.saver.restore(self.sess, path)
 
 
   def close_session(self):
@@ -237,5 +235,6 @@ if __name__ == "__main__":
   for i in xrange(NUM_ENCODERS):
     dae.train(dataset, args.numIter, i)
 
-  dae.save('../data/dae.pkl')
+  dae.save('../data/dae.ckpt')
   dae.close_session()
+
