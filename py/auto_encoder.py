@@ -91,7 +91,7 @@ class StackedEncoders(object):
       )
 
       # Print current loss
-      if (i + 1) % 5 == 0:
+      if (i + 1) % 100 == 0:
         if self.verbose >= 2:
           loss = cost.eval(
               feed_dict={self.input_placeholders[encoder_id]: batch}
@@ -215,7 +215,7 @@ class StackedEncoders(object):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Parameters')
-  parser.add_argument('-n', '--numIter', type=int, default=10)
+  parser.add_argument('-n', '--numIter', type=int, default=500)
   parser.add_argument('-l', '--lr', type=float, default=LR)
   parser.add_argument('-b', '--batchSize', type=int, default=512)
   parser.add_argument('-v', '--verbose', type=int, default=2)
@@ -231,10 +231,24 @@ if __name__ == "__main__":
   dae = StackedEncoders(dim, learning_rate=args.lr, batch_size=args.batchSize,
     verbose=args.verbose)
 
-  # Greedy layer-wise training
-  for i in xrange(NUM_ENCODERS):
-    dae.train(dataset, args.numIter, i)
+  # # Greedy layer-wise training
+  # for i in xrange(NUM_ENCODERS):
+  #  dae.train(dataset, args.numIter, i)
 
-  dae.save('../data/dae.ckpt')
+  dae.load('../data/dae.small.ckpt')
+
+  # encoded = dae.encode(dataset.xtrain)
+  # np.savetxt("/scratch/users/naromano/deep-patient/shah/x.train.encoded.small.txt", 
+  #        encoded,
+  #        delimiter=",")
+
+  dataset.load_set("test")
+  dataset.load_notes("test")
+
+  encoded = dae.encode(dataset.xtest)
+  np.savetxt("/scratch/users/naromano/deep-patient/shah/x.test.encoded.small.txt",
+          encoded,
+          delimiter=",")
+
   dae.close_session()
 

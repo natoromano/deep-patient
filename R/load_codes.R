@@ -10,6 +10,11 @@
 rm(list=ls())
 library("dplyr")
 
+# Path so save the data and metadata
+REPO_PATH = '/home/naromano/deep-patient'
+PATH = '/scratch/users/naromano/deep-patient/shah'
+METADATA_PATH = paste(REPO_PATH, 'data', sep='/')
+
 # Load data
 demo = as.data.frame(
   readRDS('/scratch/users/kjung/ehr-repr-learn/data/demographics.rds')
@@ -82,15 +87,26 @@ counts <- as.data.frame(summarize(by_code, count=n()))
 codes.to.keep <- filter(counts, count >= 5, 
                         count < 0.8 * length(unique(codes$patient_id)))$code
 
-by_patient <- group_by(orders, rxcui)
+by_code <- group_by(orders, rxcui)
 counts <- as.data.frame(summarize(by_code, count=n()))
 orders.to.keep <- filter(counts, count >= 5, 
                          count < 0.8 * length(unique(orders$patient_id)))$rxcui
 
 
 # Sample test patients, and hold them back from training set
+test.patients = unique(codes.2014$patient_id)
+test.patients = test.patients[test.patients %in% 
+                                  rownames(filter(totalCounts, count >= 10))]
 test.patients = base::sample(unique(codes.2014$patient_id), size=80000)
 
+# Add test patients for downstream task
+test.demo = filter(demo, patient_id %in% test.patients)
+test.codes = filter(codes, patient_id %in% test.patients)
+test.orders = filter(orders, patient_id %in% test.patients)
+test.targets = filter(codes.2014, patient_id %in% test.patients,
+                      code %in% codes.to.keep)
+
+# Hold back test patients from source task training set
 codes = filter(codes, patient_id %in% ids, !is.null(code),
                code %in% codes.to.keep,
                !(patient_id %in% test.patients))
@@ -106,54 +122,50 @@ train.demo = filter(demo, patient_id %in% train.patients)
 train.codes = filter(codes, patient_id %in% train.patients)
 train.orders = filter(orders, patient_id %in% train.patients)
 train.targets = filter(codes.2014, patient_id %in% train.patients)
-# Add test patients for downstream task
-test.demo = filter(demo, patient_id %in% test.patients)
-test.codes = filter(codes, patient_id %in% test.patients)
-test.orders = filter(orders, patient_id %in% test.patients)
-test.targets = filter(codes.2014, patient_id %in% test.patients,
-                      code %in% codes.to.keep)
 
 # Save data
 # Training data
 write.table(codes,
-          file='/scratch/users/naromano/deep-patient/shah/codes.csv',
-          row.names=F)
+            file=paste(PATH, 'codes.csv', sep='/'),
+            row.names=F)
 write.table(orders, 
-          file='/scratch/users/naromano/deep-patient/shah/orders.csv',
-          row.name=F)
+            file=paste(PATH, 'orders.csv', sep='/'),
+            row.name=F)
 write.table(demo, 
-          file='/scratch/users/naromano/deep-patient/shah/demo.csv',
-          row.name=F)
+            file=paste(PATH, 'demo.csv', sep='/'),
+            row.name=F)
 # Disease prediction traininig data
 write.table(train.demo,
-          file='/scratch/users/naromano/deep-patient/shah/train.demo.csv',
-          row.names=F)
+            file=paste(PATH, 'train.demo.csv', sep='/'),
+            row.names=F)
 write.table(train.codes,
-          file='/scratch/users/naromano/deep-patient/shah/train.codes.csv',
-          row.names=F)
+            file=paste(PATH, 'train.codes.csv', sep='/'),
+            row.names=F)
 write.table(train.orders,
-          file='/scratch/users/naromano/deep-patient/shah/train.orders.csv',
-          row.names=F)
+            file=paste(PATH, 'train.orders.csv', sep='/'),
+            row.names=F)
 write.table(train.targets,
-          file='/scratch/users/naromano/deep-patient/shah/train.targets.csv',
-          row.names=F)
+            file=paste(PATH, 'train.targets.csv', sep='/'),
+            row.names=F)
 # Disease prediction validation and test data
 write.table(test.demo,
-          file='/scratch/users/naromano/deep-patient/shah/test.demo.csv',
-          row.names=F)
+            file=paste(PATH, 'test.demo.csv', sep='/'),
+            row.names=F)
 write.table(test.codes,
-          file='/scratch/users/naromano/deep-patient/shah/test.codes.csv',
-          row.names=F)
+            file=paste(PATH, 'test.codes.csv', sep='/'),
+            row.names=F)
 write.table(test.orders,
-          file='/scratch/users/naromano/deep-patient/shah/test.orders.csv',
-          row.names=F)
+            file=paste(PATH, 'test.orders.csv', sep='/'),
+            row.names=F)
 write.table(test.targets,
-          file='/scratch/users/naromano/deep-patient/shah/test.targets.csv',
-          row.names=F)
+            file=paste(PATH, 'test.targets.csv', sep='/'),
+            row.names=F)
 
 # Metadata
-write(all.codes, file='../data/codes.txt', sep='\n')
-write(all.orders, file='../data/orders.txt', sep=', ')
-write(ids, file='../data/patients.txt', sep='\n')
-write(train.patients, file='../data/train.patients.txt', sep='\n')
-write(test.patients, file='../data/test.patients.txt', sep='\n')
+write(all.codes, file=paste(METADATA_PATH, 'codes.txt', sep='/'), sep='\n')
+write(all.orders, file=paste(METADATA_PATH, 'orders.txt', sep='/'), sep=', ')
+write(ids, file=paste(METADATA_PATH, 'patients.txt', sep='/'), sep='\n')
+write(train.patients,
+      file=paste(METADATA_PATH, 'train.patients.txt', sep='/'), sep='\n')
+write(test.patients,
+      file=paste(METADATA_PATH, 'test.patients.txt', sep='/'), sep='\n')
