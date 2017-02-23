@@ -61,6 +61,7 @@ def encode_notes(n_topics, n_jobs, start_idx, end_idx, model_path,
     if not use_saved:
         model = TopicModel(
                 n_topics=n_topics, 
+                max_iter=20,
                 learning_method="online",
                 n_jobs=n_jobs, 
                 verbose=verbose,
@@ -122,10 +123,14 @@ class TopicModel(LatentDirichletAllocation):
     Wrapper around sklearn's LDA model to handle dumped data.
     """
 
-    VOCAB_PATH = "data/cuis.txt"
+    VOCAB_PATH = "data/cuis_thr_50.txt"
 
 
     def fit(self, start, stop, path=None, **kwargs): 
+        """
+        Wrapper around fitting methods, to first construct the matrix 
+        from indices between start and stop.
+        """
         if path is None:
             path = NOTES_PATH    
 
@@ -138,9 +143,14 @@ class TopicModel(LatentDirichletAllocation):
         if self.verbose >= 1:
             print "Fitting topic model..."
         super(TopicModel, self).fit(mat, **kwargs)
+        del mat
 
 
     def transform(self, start, stop, path=None, **kwargs):
+        """
+        Wrapper around transform methods, to first construct the matrix 
+        from indices between start and stop.
+        """
         if path is None:
             path = NOTES_PATH
 
@@ -154,6 +164,12 @@ class TopicModel(LatentDirichletAllocation):
 
     def construct_matrix(self, start, stop=None, path=None, 
             data_file=None, return_ids=False):
+        """
+        Constructs the document-term matrix.
+        
+        If only start is given, will take notes until @start idx. If both start
+        and end are given, will take notes between @start and @end.
+        """
         notes = []
         term_ids = []
         ids = []
@@ -210,11 +226,19 @@ class TopicModel(LatentDirichletAllocation):
 
     @classmethod
     def load(cls, path):
+        """
+        Loads saved model.
+        """
         with open(path, "r") as f:
             return cPickle.load(f)
 
 
     def save(self, path):
+        """
+        Saves model to given file.
+        
+        Will overwrite it.
+        """
         with open(path, "w") as f:
             cPickle.dump(self, f)
         if self.verbose >= 1:
@@ -222,6 +246,10 @@ class TopicModel(LatentDirichletAllocation):
 
 
     def load_vocab(self, path=None):
+        """
+        Loads the vocabulary (list of words/cuids to use). All other words will
+        be marked as "out of vocab".
+        """
         if path is None:
             path = self.VOCAB_PATH
 

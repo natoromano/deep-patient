@@ -9,8 +9,9 @@ import argparse
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+import bcolz
 
-from utils import load_data
+from utils import Dataset, save_data
 
 
 ENCODE_IDX = 0
@@ -19,7 +20,7 @@ ENCODE_IDX = 0
 NUM_ENCODERS = 3
 NOISE_LEVEL = 0.05
 H = 500
-LR = 0.01
+LR = 0.001
 
 
 
@@ -81,7 +82,7 @@ class StackedEncoders(object):
       batch = dataset.next_batch(self.batch_size)
       # Encode input with previously trained layer
       if encoder_id > 0:
-        batch = self.encode(batch, encoder_id)
+        batch = self.encode(batch, encoder_id - 1)
       # Add noise
       batch = self.corrupt(batch)
 
@@ -112,10 +113,11 @@ class StackedEncoders(object):
     )
 
 
-  def corrupt(self, data):
+  def corrupt(self, clean_data):
     """
     Input noise.
     """
+    data = np.copy(clean_data)
     n_masked = int(data.shape[1] * self.noise_level)
 
     for i in xrange(data.shape[0]):
@@ -178,8 +180,9 @@ class StackedEncoders(object):
 
     # Objective function and optimizer
     cost = tf.reduce_mean(
-      - tf.reduce_sum(input * tf.log(decode) + (1 - input) * tf.log(1 - decode), 
-        axis=1)
+      - tf.reduce_sum(tf.add(
+          tf.multiply(input, tf.log(decode)),
+          tf.multiply(1 - input, tf.log(1 - decode))), axis=1)
     )
     train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(cost)
     self.ops.append((encode, decode, cost, train))
@@ -193,7 +196,7 @@ class StackedEncoders(object):
     for ops_id in xrange(self.num_encoders):
       x = self.input_placeholders[0]
 
-      for encoder in xrange(ops_id):
+      for encoder in xrange(ops_id + 1):
         x = tf.nn.sigmoid(
           tf.add(tf.matmul(x, self.weights[encoder]), 
             self.encode_biases[encoder])
@@ -215,40 +218,52 @@ class StackedEncoders(object):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Parameters')
-  parser.add_argument('-n', '--numIter', type=int, default=500)
+  # Model params
+  parser.add_argument('-n', '--numIter', type=int, default=200)
   parser.add_argument('-l', '--lr', type=float, default=LR)
   parser.add_argument('-b', '--batchSize', type=int, default=512)
   parser.add_argument('-v', '--verbose', type=int, default=2)
+  # Load saved model (else it will be re-trained)
+  parser.add_argument('-d', '--load', dest='load', action="store_true")
+  # Model path (for loading or saving)
+  parser.add_argument('-m', '--model', type=str, default='../data/dae.ckpt')
+  # Whether or not to use notes
+  parser.add_argument('--notes', dest='notes', action="store_true")
+  parser.add_argument('--no-notes', dest='notes', action='store_false')
+  parser.set_defaults(load=False, notes=True)
   args = parser.parse_args()
   
   # Load data
   if args.verbose >= 1:
       print "Loading data..."
 
-  dataset = load_data()
+  dataset = Dataset(use_notes=args.notes)
   dim = dataset.dimension
       
   dae = StackedEncoders(dim, learning_rate=args.lr, batch_size=args.batchSize,
     verbose=args.verbose)
 
-  # # Greedy layer-wise training
-  # for i in xrange(NUM_ENCODERS):
-  #  dae.train(dataset, args.numIter, i)
+  if not args.load:
+    # Greedy layer-wise training
+    for i in xrange(NUM_ENCODERS):
+      dae.train(dataset, args.numIter, i)
+    dae.save(args.model)
+  else:
+    dae.load(args.model)
 
-  dae.load('../data/dae.small.ckpt')
+  encoded = dae.encode(dataset.xtrain)
+  save_data(encoded, "ztrain")
 
-  # encoded = dae.encode(dataset.xtrain)
-  # np.savetxt("/scratch/users/naromano/deep-patient/shah/x.train.encoded.small.txt", 
-  #        encoded,
-  #        delimiter=",")
-
+  # Load validation and test set
+  dataset.load_set("val")
   dataset.load_set("test")
-  dataset.load_notes("test")
+
+  # Encode and save datasets
+  encoded = dae.encode(dataset.xval)
+  save_data(encoded, "zval")
 
   encoded = dae.encode(dataset.xtest)
-  np.savetxt("/scratch/users/naromano/deep-patient/shah/x.test.encoded.small.txt",
-          encoded,
-          delimiter=",")
+  save_data(encoded, "ztest")
 
   dae.close_session()
 

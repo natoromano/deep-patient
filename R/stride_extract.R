@@ -153,7 +153,7 @@ codes.targets <- codes.targets %>%
   reshape2::dcast(formula=patient_id ~ CCS.CODE, fill=0, value.var="count",
                   fun.aggregate=sum)
 y_matrix <- merge(demo, codes.targets, by="patient_id", all.x=T)
-y_matrix <- y_matrix[, -c(1, 2)]
+y_matrix <- y_matrix[, -c(2, 3)]
 y_matrix[y_matrix > 1] = 1
 y_matrix[is.na(y_matrix)] <- 0
 
