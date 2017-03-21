@@ -37,6 +37,7 @@ all.orders = unique(orders$rxcui)
 
 # Count codes before and after splitting point
 codes.targets <- codes.targets %>%
+  filter(sab %in% c("BILLING", "DX_ID")) %>%
   group_by(patient_id, code) %>%
   summarize(
     count = n(),
@@ -153,7 +154,6 @@ codes.targets <- codes.targets %>%
   reshape2::dcast(formula=patient_id ~ CCS.CODE, fill=0, value.var="count",
                   fun.aggregate=sum)
 y_matrix <- merge(demo, codes.targets, by="patient_id", all.x=T)
-y_matrix <- y_matrix[, -c(2, 3)]
 y_matrix[y_matrix > 1] = 1
 y_matrix[is.na(y_matrix)] <- 0
 
@@ -224,15 +224,16 @@ write.table(y.test,
 
 # Save metadata
 write.table(split.ids, 
-            file='/scratch/users/kjung/ehr-repr-learn/data/split.txt')
+            file='/scratch/users/kjung/ehr-repr-learn/data/split.txt',
+            row.names=F)
 write(ids, 
-      file='/scratch/users/kjung/ehr-repr-learn/data/patients', 
+      file='/scratch/users/kjung/ehr-repr-learn/data/patients.txt', 
       sep='\n')
 write(all.codes,
       file='/scratch/users/kjung/ehr-repr-learn/data/x.covariates.txt',
       sep='\n')
 write(all.labels,
-      file='/scratch/users/kjung/ehr-repr-learn/data/y.labels',
+      file='/scratch/users/kjung/ehr-repr-learn/data/y.labels.txt',
       sep='\n')
 write(medcodes,
       file='/scratch/users/kjung/ehr-repr-learn/data/medcodes.txt',

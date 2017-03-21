@@ -51,7 +51,7 @@ def parse_line(line):
 
 
 def encode_notes(n_topics, n_jobs, start_idx, end_idx, model_path,
-        notes_path, embedding_path, batch_size, use_saved=False, verbose=2):
+        notes_path, embedding_path, vocab_path, batch_size, use_saved=False, verbose=2):
     """
     Trains a topic model on the provided notes, and encodes all the others.
 
@@ -61,13 +61,12 @@ def encode_notes(n_topics, n_jobs, start_idx, end_idx, model_path,
     if not use_saved:
         model = TopicModel(
                 n_topics=n_topics, 
-                max_iter=20,
                 learning_method="online",
                 n_jobs=n_jobs, 
                 verbose=verbose,
         )
 
-        model.fit(start=start_idx, stop=end_idx)
+        model.fit(start=start_idx, stop=end_idx, vocab=vocab_path)
         model.save(model_path)
     else:
         model = TopicModel.load(model_path)
@@ -99,11 +98,9 @@ def encode_notes(n_topics, n_jobs, start_idx, end_idx, model_path,
                 continue
 
     # Start dumping notes
-    per_note = embedding_path + 'embedding_notes_cui.pkl'
-    per_patient = embedding_path + 'embedding_patients_cui.pkl'
+    per_patient = embedding_path
 
     # Create empty files
-    # open(per_note, "a").close()
     open(per_patient, "a").close()
 
     # We only embed per patients here
@@ -123,10 +120,7 @@ class TopicModel(LatentDirichletAllocation):
     Wrapper around sklearn's LDA model to handle dumped data.
     """
 
-    VOCAB_PATH = "data/cuis_thr_50.txt"
-
-
-    def fit(self, start, stop, path=None, **kwargs): 
+    def fit(self, start, stop, vocab, path=None, **kwargs): 
         """
         Wrapper around fitting methods, to first construct the matrix 
         from indices between start and stop.
@@ -134,7 +128,7 @@ class TopicModel(LatentDirichletAllocation):
         if path is None:
             path = NOTES_PATH    
 
-        self.load_vocab()
+        self.load_vocab(vocab)
 
         if self.verbose >= 1:
             print "Constructing document-term matrix..."
@@ -245,14 +239,11 @@ class TopicModel(LatentDirichletAllocation):
             print "Saved topic model."
 
 
-    def load_vocab(self, path=None):
+    def load_vocab(self, path):
         """
         Loads the vocabulary (list of words/cuids to use). All other words will
         be marked as "out of vocab".
         """
-        if path is None:
-            path = self.VOCAB_PATH
-
         vocab = []
         with open(path, "r") as f:
             for line in f:
@@ -272,7 +263,8 @@ if __name__ == "__main__":
    parser.add_argument('-m', '--model', type=str, default="models/model_cui.pkl")
    parser.add_argument('-d', '--notes', type=str, default=NOTES_PATH)
    parser.add_argument('-g', '--embedding', type=str,
-    default="/scratch/users/naromano/deep-patient/shah/")
+    default="/scratch/users/naromano/deep-patient/shah/embedding_patients_cui_pkl")
+   parser.add_argument('--vocab', default="data/cuis_thr_50.txt")
    parser.add_argument('-v', '--verbose', type=int, default=0)
    parser.add_argument('-b', '--batch', type=int, default=100000)
    parser.add_argument('-l', '--load', dest='load', action="store_true")
@@ -280,5 +272,5 @@ if __name__ == "__main__":
    args = parser.parse_args()
 
    encode_notes(args.topics, args.jobs, args.start, args.end, args.model,
-           args.notes, args.embedding, args.batch, args.load, args.verbose)
+           args.notes, args.embedding, args.vocab, args.batch, args.load, args.verbose)
 
